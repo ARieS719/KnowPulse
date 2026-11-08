@@ -1,0 +1,78 @@
+# ============================================================
+# KnowPulse (EduGuard-RAG) 全局配置文件
+# 方案 v1.2 · 三层架构：数据质量门 -> 双索引混合检索 -> 评测闭环
+# 环境密钥（API Key 等）在 configs/.env 中配置，不要写在这里
+# ============================================================
+
+# ---- 运行模式 --------------------------------------------------
+# MODE_A      : 本地 GPU/CPU 嵌入 + 重排，LLM 走硅基流动 API（推荐）
+# MODE_B      : 本地嵌入/重排 + Ollama 本地 LLM（离线兜底演示）
+# MODE_CLOUD  : 嵌入/重排/LLM 全走硅基流动 API（无本地模型时最快跑通）
+run_mode: MODE_A
+
+# ---- 路径（相对于项目根目录）-----------------------------------
+paths:
+  data_root: data/raw            # 原始语料（含人为注入脏数据，等待质量门拦截）
+  manifest_csv: data/meta/manifest.csv
+  parsed_dir: data/parsed        # MinerU/OCR 解析产出缓存
+  quarantine_dir: data/quarantine
+  golden_set: data/golden_set/golden_set_v1.jsonl
+  badcases: data/golden_set/badcases.jsonl
+  chroma_dir: data/storage/chroma_db
+  metadata_db: data/storage/metadata.db
+  ablation_report: data/golden_set/ablation_report.md
+  quality_gate_report: data/quarantine/quality_gate_report.md
+
+# ---- 嵌入（Embedding）------------------------------------------
+embed:
+  mode: local                    # local | siliconflow
+  model: BAAI/bge-m3
+  batch_size: 16                 # 本机 RTX 3050 为 4GB 显存（nvidia-smi 实测），16 更稳；CPU 模式可降至 8
+  normalize: true
+  # 模型下载镜像（国内网络建议 hf-mirror；留空使用官方 hf.co）
+  hf_endpoint: https://hf-mirror.com
+
+# ---- 重排（Reranker）-------------------------------------------
+rerank:
+  mode: siliconflow             # local | siliconflow
+  # 说明：本机 RTX 3050 为 4GB 显存且与桌面 GUI 共享（实测 18 个进程挤占后剩 ~300MB），
+  # 本地 CrossEncoder（FP32 ~2.2GB）会触发 WDDM 显存分页抖动（CPU 空闲/GPU 100%/极慢）。
+  # 云端重排用同款 bge-reranker-v2-m3 模型，单次 <0.3s、几乎免费，是这台机器的默认选择；
+  # 演示"本地重排"时可切回 local（关闭 Chrome 等大应用后小规模可行）。
+  model: BAAI/bge-reranker-v2-m3
+  batch_size: 16
+  top_n: 8
+
+# ---- 检索 ------------------------------------------------------
+retrieval:
+  top_k_vector: 100             # 向量召回池（重排前召回，越大召回越全）
+  top_k_fts: 100                # BM25 召回池
+  final_top_k: 8
+  rrf_k: 60                      # RRF 融合常数
+  min_rerank_score: 0.05         # 低于该分且重排开启时触发无证据拒答
+  semantic_cache:
+    enabled: true
+    max_size: 256
+    threshold: 0.96              # 查询向量余弦相似度 >= 0.96 命中缓存
+
+# ---- LLM -------------------------------------------------------
+llm:
+  provider: siliconflow
+  model: Qwen/Qwen2.5-72B-Instruct
+  judge_model: deepseek-ai/DeepSeek-V3
+  temperature: 0.1
+  price_per_mtok: 4.13           # 元/百万 token（Qwen2.5-72B 约 4.13，DeepSeek-V3 约 2）
+  judge_price_per_mtok: 2.0
+
+# ---- 数据质量门阈值（对齐 data/meta/dirty_audit_report.md 实测校准）----
+quality:
+  garbled_field_max: 0.05        # 字段级混乱字符占比阈值
+  garbled_file_max: 0.02         # 整文件混乱字符占比阈值
+  blank_pdf_size_kb: 30.0        # 整份空白 PDF 大小阈值
+  low_res_energy: 5.0            # 图像梯度能量清晰度阈值
+  near_dup_overlap_ratio: 0.80   # 题目级指纹重合度阈值
+  ocr_confidence_min: 0.75       # OCR 平均置信度低于此值路由质量门
+
+# ---- 可观测性（可选）-------------------------------------------
+langfuse:
+  enabled: false                 # 未配置密钥时自动禁用，不会报错
