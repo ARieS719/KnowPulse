@@ -303,16 +303,22 @@ class MultiFormatParserRouter:
         return chunks
 
     def _parse_image_card(self, doc_id: str, title: str, subj: str, path: Path) -> List[Dict]:
-        """图片摘要索引：子块=图注+OCR题干，父块=原图路径挂载"""
-        ocr = self._get_ocr()
+        """图片摘要索引：子块=图注+OCR题干，父块=原图路径挂载。
+        OCR 文本优先读取预解析缓存 data/parsed/{doc_id}.ocr.txt（由 OCR 专用环境生成），
+        缓存不存在且当前环境装有 OCR 引擎时现场识别。"""
+        cached_txt = self.parsed_cache_dir / f"{doc_id}.ocr.txt"
         ocr_text = ""
-        if ocr:
-            try:
-                res = ocr.ocr(str(path), cls=True)
-                lines = [line[1][0] for block in (res or []) for line in (block or [])]
-                ocr_text = " ".join(lines)
-            except Exception:
-                ocr_text = ""
+        if cached_txt.exists():
+            ocr_text = cached_txt.read_text(encoding="utf-8").strip()
+        else:
+            ocr = self._get_ocr()
+            if ocr:
+                try:
+                    res = ocr.ocr(str(path), cls=True)
+                    lines = [line[1][0] for block in (res or []) for line in (block or [])]
+                    ocr_text = " ".join(lines)
+                except Exception:
+                    ocr_text = ""
         summary = f"【{subj}题目卡片图：{title}】{ocr_text}".strip()
         child_clean, _ = CalibratedQualityOperators.mask_pii(summary)
         parent_clean, _ = CalibratedQualityOperators.mask_pii(
