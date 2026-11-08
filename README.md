@@ -9,13 +9,13 @@
 | 项目 | 结果 | 证据 |
 |---|---|---|
 | 质量门：677 份脏数据拦截率 | 677/677，干净数据零误伤 | [quality_gate_report.md](data/quarantine/quality_gate_report.md) |
-| 解析产出率（100 份分层抽检） | 100%；完整内容解析率 80%（缺口来自未装 OCR，见 §9） | [parse_audit_report.md](data/golden_set/parse_audit_report.md) |
+| 解析产出率（100 份分层抽检） | 100%；完整内容解析率 100%（OCR 预解析接入后） | [parse_audit_report.md](data/golden_set/parse_audit_report.md) |
 | 检索 Recall@5（hybrid_rerank） | 81.08% | [ablation_report.md](data/golden_set/ablation_report.md) |
-| 检索 Recall@10 | 86.49% | 同上 |
+| 检索 Recall@10 | 85.14%（BM25 档 90.54%） | 同上 |
 | 相对向量基线提升 | +25.67 个百分点 | 同上 |
 | 生成忠实度（裁判模型判分） | 68/68 判为忠实 | [generation_report.md](data/golden_set/generation_report.md) |
 | 无证据拒答正确率 | 5/5 | 同上 |
-| 引用硬校验 Precision | 0.8924 | 同上 |
+| 引用硬校验 Precision | 0.9367 | 同上 |
 | 单元测试 | 8 项通过（CI 门禁） | `.github/workflows/ci.yml` |
 
 索引规模：4,542 份文档、19,211 个切片（ChromaDB 向量 + SQLite FTS5 双索引）。全量评测的 LLM API 累计成本约 0.61 元。
@@ -34,13 +34,13 @@ RAG 知识库的检索效果很大程度上取决于进入索引的文档质量�
 | 指标 | 设定目标 | 实测 |
 |---|---|---|
 | 脏数据入库拦截率 | 100% | 100%（677/677，误伤 0） |
-| 文档解析成功率 | ≥ 95% | 产出率 100%；完整内容解析率 80%（缺口全部来自扫描件/图片未装 OCR，见 §9 与 [parse_audit_report.md](data/golden_set/parse_audit_report.md)） |
+| 文档解析成功率 | ≥ 95% | 产出率 100%；完整内容解析率 100%（OCR 预解析接入后，见 §8 与 [parse_audit_report.md](data/golden_set/parse_audit_report.md)） |
 | 检索 Recall@5 | ≥ 82% | 81.08% |
 | Recall@5 分层 | 简单类 ≥ 92%；表格/扫描类 ≥ 72% | 88.57% / 74.36% |
-| Recall@10 | ≥ 90% | 86.49% |
+| Recall@10 | ≥ 90% | 85.14%（BM25 档 90.54%） |
 | 相对朴素基线提升 | ≥ 18–25 个百分点 | +25.67pp |
 | 生成忠实度 | ≥ 0.85 | 68/68 |
-| 引用硬校验 Precision | ≥ 0.90 | 0.8924 |
+| 引用硬校验 Precision | ≥ 0.90 | 0.9367 |
 | 单次问答成本 | < 0.05 元 | 实测 0.005 元量级 |
 
 ## 2. 系统架构
@@ -155,10 +155,10 @@ python -m pytest tests
 
 | 检索配置 | Recall@5 | Recall@10 | MRR@10 | nDCG@10 | 平均延迟 |
 |---|---:|---:|---:|---:|---:|
-| 仅向量 | 55.41% | 64.86% | 0.5087 | 0.5416 | 62.8 ms |
-| 仅 BM25 | 70.27% | 78.38% | 0.6706 | 0.6968 | 18.0 ms |
-| 混合 + RRF | 68.92% | 81.08% | 0.5805 | 0.6348 | 78.3 ms |
-| 混合 + RRF + 重排 | 81.08% | 86.49% | 0.7392 | 0.7693 | ~1.4–2.1 s |
+| 仅向量 | 44.59% | 52.70% | 0.3801 | 0.4151 | 70.4 ms |
+| 仅 BM25 | 82.43% | 90.54% | 0.7876 | 0.8147 | 20.3 ms |
+| 混合 + RRF | 72.97% | 78.38% | 0.5650 | 0.6194 | 86.0 ms |
+| 混合 + RRF + 重排 | 81.08% | 85.14% | 0.7463 | 0.7717 | ~1.4–2.2 s |
 
 重排档的延迟主要来自云端重排 API 往返（详见 §8）。完整报告见 [ablation_report.md](data/golden_set/ablation_report.md)。
 
@@ -166,7 +166,7 @@ python -m pytest tests
 
 - 忠实度：以裁判模型（DeepSeek-V3）判断"标准答案是否蕴含于检索证据"，74 条可回答题目中 68 条参与判定、全部判为忠实；
 - 无证据拒答：5 条应拒答题全部正确拒答；
-- 引用硬校验：在线正则校验回答中的引用编号是否真实存在于本次召回，平均 Precision 0.8924。
+- 引用硬校验：在线正则校验回答中的引用编号是否真实存在于本次召回，平均 Precision 0.9367。
 
 完整报告见 [generation_report.md](data/golden_set/generation_report.md)。
 
@@ -176,11 +176,12 @@ python -m pytest tests
 
 ### 5.5 迭代记录
 
-实验过程中三次较大的修改及其影响：
+实验过程中四次较大的修改及其影响：
 
 1. 讲义解析器将 Heading 2 样式的正文段误判为标题，导致讲义正文丢失；修复后 FTS 索引块 14,710 → 19,211，简单类 Recall 提升约 20 个百分点；
 2. RRF 合并池截断导致只在单路出现的候选被挤出重排池；保留两路全部唯一候选后，Recall@5 提升 13.5 个百分点；
-3. 评测命中口径从文档级升级为三口径判定，修正模板副本语料下的系统性低估。
+3. 评测命中口径从文档级升级为三口径判定，修正模板副本语料下的系统性低估；
+4. 接入 OCR 预解析（独立环境 .venv-ocr + ocr_preparse.py）：解析完整率 80% → 100%；期间发现文档编号从可检索文本中消失导致"按编号提问"的题目召回骤降，将 doc_id 写入扫描件/图片块前缀修复后，BM25 档 Recall@10 升至 90.54%。
 
 ## 6. 语料说明
 
@@ -209,14 +210,20 @@ python -m pytest tests
   ```
 - 无 GPU 也可运行：嵌入/重排自动降级 CPU（settings.yaml 中 embed.batch_size 建议调至 8–16），或切换 MODE_CLOUD。
 - 模型下载镜像：settings.yaml `embed.hf_endpoint` 默认 `https://hf-mirror.com`。
+- OCR 预解析（扫描件/图片，可选）：paddlepaddle 2.6 要求 protobuf ≤3.20.2，与主环境 chromadb 链路（protobuf ≥6.33.5）不兼容，因此 OCR 在独立环境 `.venv-ocr` 中运行，识别结果落盘为解析缓存、由主流水线消费：
+  ```powershell
+  D:\Python3.11\python.exe -m venv .venv-ocr
+  .\.venv-ocr\Scripts\pip.exe install paddlepaddle==2.6.2 paddleocr==2.7.3 "numpy>=1.23,<2"
+  .\.venv-ocr\Scripts\python.exe -m src.ingestion.ocr_preparse --categories scanned images
+  python -m src.indexing.dual_writer    # 主环境重索引（消费解析缓存）
+  ```
 
 ## 9. 局限性与后续方向
 
 - 语料与评测集的规模较小（79 条评测题），后续可用 `build_golden.py` 的候选生成 + 人工复核流程扩充；
-- 真实扫描件 OCR（paddleocr/mineru）尚未安装，当前以标题+元数据兜底索引；
-- 引用硬校验 Precision 0.8924 略低于设定目标，可尝试在 prompt 中加入引用格式的少样本示例；
+- OCR 识别精度受扫描件倾斜/噪声/水印影响，低置信度文档按时间盒止损规则保持标题级兜底（`ocr_preparse.py` 中 MIN_CONFIDENCE=0.75）；
 - 未做模型预训练/微调、多租户权限（仅文档级 ACL 预留）、移动端；文档规模按万级设计；
-- 检索延迟在云端重排配置下约 1.4–2.1s（API 往返）；本地 GPU 重排可达 150–280ms，受 4GB 共享显存限制。
+- 检索延迟在云端重排配置下约 1.4–2.2s（API 往返）；本地 GPU 重排可达 150–280ms，受 4GB 共享显存限制。
 
 ## 参考资料
 
@@ -224,6 +231,6 @@ python -m pytest tests
 - 试卷标题元数据：[Exam-Question-Bank-Dataset-zh_mnbvc](https://github.com/UnstoppableCurry/Exam-Question-Bank-Dataset-zh_mnbvc)（MIT）
 - 嵌入与重排模型：[BAAI/bge-m3](https://huggingface.co/BAAI/bge-m3)、[BAAI/bge-reranker-v2-m3](https://huggingface.co/BAAI/bge-reranker-v2-m3)
 - 向量库：[ChromaDB](https://docs.trychroma.com/)；全文检索：[SQLite FTS5](https://www.sqlite.org/fts5.html)（jieba 预分词）
-- 文档解析：[MinerU](https://github.com/opendatalab/MinerU)（预留）、[PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)（预留）
+- 文档解析：[MinerU](https://github.com/opendatalab/MinerU)（预留）、[PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)（扫描件/图片预解析）
 - LLM 服务：[硅基流动 API](https://siliconflow.cn)（Qwen2.5-72B-Instruct / DeepSeek-V3）
 - 评测方法参考：RAGAS 的忠实度与引用评测思路
