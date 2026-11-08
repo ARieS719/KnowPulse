@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ARieS719/KnowPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/ARieS719/KnowPulse/actions)
 
-> **企业级中文教育知识库 RAG 数据工程项目** · 方案 v1.2
+> **中文教育知识库 RAG 数据工程项目** · 方案 v1.2
 > 一句话定位：覆盖「非结构化数据采集 → 解析/OCR → **入库数据质量门** → 切片索引 → 混合检索 → **三层评测与回归闭环**」的中文知识库 RAG 系统。核心是**数据质量治理与评测体系**，而不是"调了一个 LangChain demo"。
 
 ## 实测结果速览（2026-11-08）
