@@ -40,7 +40,10 @@ def classify(category: str, chunks: list) -> str:
             return "部分"
         return "完整"
     if category == "images":
-        if text.endswith("】"):
+        # 兜底块 = 标题括号（第一个 】）之后无内容；有 OCR 文本时其后必有正文。
+        # 不能用 endswith("】") 判定——OCR 文本末尾可能自带形如【自造模拟题卡片】的标签。
+        parts = text.split("】", 1)
+        if len(parts) == 1 or not parts[1].strip():
             return "部分"
         return "完整"
     return "完整"
@@ -106,17 +109,31 @@ def run_parse_audit(report_path: Path, seed: int = SEED) -> Path:
         "",
         "## 全量口径交叉验证",
         "",
-        "入库流程记录：4,502 份干净文档全部产出索引块（无 LOW_OCR_CONFIDENCE 隔离记录），",
-        "与抽检的「产出率 100%」一致；抽检的「部分」档全部来自扫描件与图片——",
-        "当前环境未安装 OCR 引擎（paddleocr/mineru），这两类文档以标题/元数据兜底索引（README §9 已声明）。",
-        "",
-        "## 部分解析清单",
-        "",
-        "| 文档 | 类别 | 原因 |",
-        "|---|---|---|",
+        "入库流程记录：4,502 份干净文档全部产出索引块（无 LOW_OCR_CONFIDENCE 隔离记录），与抽检的产出率一致。",
     ]
-    for x in results:
-        if x["verdict"] == "部分":
+    if counts.get("部分", 0):
+        md += [
+            "",
+            "「部分」档来自扫描件/图片的标题级兜底；安装 OCR 引擎（paddleocr，见 ocr_preparse.py）",
+            "并重跑预解析后可转为完整解析。",
+        ]
+    else:
+        md += [
+            "",
+            "本次抽样未出现「部分」与「失败」档：OCR 预解析已接入（.venv-ocr + ocr_preparse.py），",
+            "扫描件与图片均可产出正文内容块。",
+        ]
+
+    partial_rows = [x for x in results if x["verdict"] == "部分"]
+    if partial_rows:
+        md += [
+            "",
+            "## 部分解析清单",
+            "",
+            "| 文档 | 类别 | 原因 |",
+            "|---|---|---|",
+        ]
+        for x in partial_rows:
             md.append(f"| {x['doc_id']} | {x['category']} | 无 OCR 环境，仅标题/元数据兜底（块数 {x['n_chunks']}） |")
 
     report_path.parent.mkdir(parents=True, exist_ok=True)
