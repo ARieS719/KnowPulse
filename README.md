@@ -9,6 +9,7 @@
 | 项目 | 结果 | 证据 |
 |---|---|---|
 | 质量门：677 份脏数据拦截率 | 677/677，干净数据零误伤 | [quality_gate_report.md](data/quarantine/quality_gate_report.md) |
+| 解析产出率（100 份分层抽检） | 100%；完整内容解析率 80%（缺口来自未装 OCR，见 §9） | [parse_audit_report.md](data/golden_set/parse_audit_report.md) |
 | 检索 Recall@5（hybrid_rerank） | 81.08% | [ablation_report.md](data/golden_set/ablation_report.md) |
 | 检索 Recall@10 | 86.49% | 同上 |
 | 相对向量基线提升 | +25.67 个百分点 | 同上 |
@@ -33,7 +34,7 @@ RAG 知识库的检索效果很大程度上取决于进入索引的文档质量�
 | 指标 | 设定目标 | 实测 |
 |---|---|---|
 | 脏数据入库拦截率 | 100% | 100%（677/677，误伤 0） |
-| 文档解析成功率 | ≥ 95% | 未做全量抽检（解析失败自动转入质量门） |
+| 文档解析成功率 | ≥ 95% | 产出率 100%；完整内容解析率 80%（缺口全部来自扫描件/图片未装 OCR，见 §9 与 [parse_audit_report.md](data/golden_set/parse_audit_report.md)） |
 | 检索 Recall@5 | ≥ 82% | 81.08% |
 | Recall@5 分层 | 简单类 ≥ 92%；表格/扫描类 ≥ 72% | 88.57% / 74.36% |
 | Recall@10 | ≥ 90% | 86.49% |
