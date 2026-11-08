@@ -287,11 +287,14 @@ class MultiFormatParserRouter:
             cached_md.write_text(text_content, encoding="utf-8")
 
         pid = f"{doc_id}#P001"
-        parent_clean, _ = CalibratedQualityOperators.mask_pii(f"【扫描卷：{title} ({subj})】\n{text_content[:1200]}")
+        parent_clean, _ = CalibratedQualityOperators.mask_pii(
+            f"【扫描卷：{title} ({doc_id}) | 学科：{subj}】\n{text_content[:1200]}"
+        )
         chunks = []
         for idx, start in enumerate(range(0, max(1, len(text_content)), 280), 1):
             piece = text_content[start:start + 320] or title
-            child_clean, _ = CalibratedQualityOperators.mask_pii(f"【{subj}·{title}】{piece}")
+            # doc_id 写入子块前缀：编号类查询（如"SCN-000339 的标题"）依赖它做精确召回
+            child_clean, _ = CalibratedQualityOperators.mask_pii(f"【{subj}·{title}·{doc_id}】{piece}")
             chunks.append({
                 "parent_id": pid,
                 "child_id": f"{pid}_C{idx:02d}",
@@ -319,7 +322,8 @@ class MultiFormatParserRouter:
                     ocr_text = " ".join(lines)
                 except Exception:
                     ocr_text = ""
-        summary = f"【{subj}题目卡片图：{title}】{ocr_text}".strip()
+        # doc_id 写入前缀：编号类查询（如"IMG-000117 属于哪个学科"）依赖它做精确召回
+        summary = f"【{subj}题目卡片图：{title}·{doc_id}】{ocr_text}".strip()
         child_clean, _ = CalibratedQualityOperators.mask_pii(summary)
         parent_clean, _ = CalibratedQualityOperators.mask_pii(
             f"【原图卡片：{title} ({doc_id}) | 学科：{subj}】\nOCR识别内容：{ocr_text or '见挂载原图'}"
