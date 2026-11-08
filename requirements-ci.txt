@@ -1,0 +1,13 @@
+# CI 精简依赖（GitHub Actions 运行单元测试所需；不含 torch/模型，保证安装快且无需 GPU）
+numpy>=1.26
+Pillow>=10.0
+pypdfium2>=4.30
+python-docx>=1.1
+openpyxl>=3.1
+jieba>=0.42
+chromadb>=0.5
+httpx>=0.27
+python-dotenv>=1.0
+PyYAML>=6.0
+pydantic>=2.7
+pytest>=8.0

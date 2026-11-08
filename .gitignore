@@ -1,0 +1,44 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# ---- 密钥 ----
+configs/.env
+.env
+
+# ---- 运行时产物（大体积，不入库）----
+data/storage/chroma_db/
+data/storage/metadata.db
+data/parsed/
+data/golden_set/badcases.jsonl
+data/golden_set/candidates.jsonl
+
+# ---- 原始语料（体积大且含第三方数据；生成脚本另行托管）----
+data/raw/
+
+# ---- 元数据：只保留报告与清单（证据链），其余不入库 ----
+data/meta/*
+!data/meta/manifest.csv
+!data/meta/dataset_report.md
+!data/meta/dirty_audit_report.md
+!data/meta/SOURCES.md
+
+# ---- 质量门隔离清单为实证证据，入库 ----
+data/quarantine/*
+!data/quarantine/quality_gate_report.md
+!data/quarantine/quarantine_list.csv
+
+# ---- 模型缓存 ----
+models/
+*.onnx
+*.bin
+
+# ---- IDE ----
+.idea/
+*.swp

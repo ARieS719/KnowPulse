@@ -1,0 +1,75 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "KnowPulse: FastAPI 服务",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["src.api.main:app", "--host", "127.0.0.1", "--port", "8000"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {"PYTHONIOENCODING": "utf-8"}
+        },
+        {
+            "name": "Step1: 质量门全量审计",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.quality.quality_gate",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {"PYTHONIOENCODING": "utf-8"}
+        },
+        {
+            "name": "Step2-3: 双索引构建（冒烟 50 份）",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.indexing.dual_writer",
+            "args": ["--limit", "50"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {"PYTHONIOENCODING": "utf-8"}
+        },
+        {
+            "name": "Step2-3: 双索引构建（全量）",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.indexing.dual_writer",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {"PYTHONIOENCODING": "utf-8"}
+        },
+        {
+            "name": "Step4: 四档消融实验",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.evaluation.metrics",
+            "args": ["--action", "run_ablation", "--limit", "20"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {"PYTHONIOENCODING": "utf-8"}
+        },
+        {
+            "name": "Step5: Badcase 归因分析",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.evaluation.badcase_loop",
+            "args": ["--action", "analyze"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {"PYTHONIOENCODING": "utf-8"}
+        },
+        {
+            "name": "pytest: 全量测试",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["tests"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {"PYTHONIOENCODING": "utf-8"}
+        }
+    ]
+}
